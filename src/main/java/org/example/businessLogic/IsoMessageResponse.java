@@ -12,10 +12,7 @@ import java.net.Socket;
 @Component
 public class IsoMessageResponse {
 
-    /**
-     * Construit et envoie une ISO 0110 avec codeResponse ("00" ou "05") et,
-     * si errorDetail != null, place ce texte en champ 44.
-     */
+
     public void sendAuthResponse(ISOMsg req,
                                  Socket clientSocket,
                                  String codeResponse,
@@ -24,10 +21,8 @@ public class IsoMessageResponse {
 
         ISOMsg resp = buildResponseFromRequest(req, codeResponse, errorDetail);
 
-        // Affichage pour debug
         IsoMessagePrinter.printISOMessage(resp, "Réponse Envoyée");
 
-        // Envoi binaire sur la socket
         OutputStream os = clientSocket.getOutputStream();
         byte[] data = resp.pack();
         os.write(data);
@@ -39,7 +34,6 @@ public class IsoMessageResponse {
         resp.setPackager(req.getPackager());
         resp.setMTI("0110");
 
-        // On copie la quasi-totalité des champs de la requête (sauf MTI et champ 39)
         int[] toCopy = {
                 2, 3, 4, 7, 11, 12, 13, 14, 17, 18,
                 22, 24, 27, 32, 35, 37, 41, 42, 43,
@@ -51,7 +45,6 @@ public class IsoMessageResponse {
             }
         }
 
-        // Champ 39 = code de réponse (00 ou 05)
         resp.set(39, codeResponse);
 
 

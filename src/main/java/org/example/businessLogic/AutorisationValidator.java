@@ -11,13 +11,9 @@ import java.util.List;
 
 public class AutorisationValidator {
 
-    // Format "MMyy" pour le champ 14 (Expiration)
     private static final DateTimeFormatter EXPIRY_FORMAT = DateTimeFormatter.ofPattern("MMyy");
 
-    /**
-     * Valide l’objet Autorisations et retourne la liste des messages d’erreur.
-     * ===> Si la liste n’est pas vide, cela signifie qu’une ou plusieurs validations ont échoué.
-     */
+
     public static List<String> validate(Autorisations a) {
         List<String> errors = new ArrayList<>();
 
@@ -37,7 +33,6 @@ public class AutorisationValidator {
             }
         }
 
-        // (Vous pouvez ajouter d'autres règles métier ici : montant > 0, MCC valide, etc.)
 
         return errors;
     }

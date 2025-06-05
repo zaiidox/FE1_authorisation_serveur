@@ -42,27 +42,24 @@ public class TransactionProcessor {
         try {
             logger.trace("Réception d'un message ISO. Début du traitement...");
 
-            // 1) Dépacker le message ISO
             ISOMsg isoMsg = new ISOMsg();
             isoMsg.setPackager(packager);
             isoMsg.unpack(isoBytes);
             IsoMessagePrinter.printISOMessage(isoMsg, "Message Reçu (Processor)");
             logger.trace("MTI reçue = {}", isoMsg.getMTI());
 
-            // 2) On ne gère que les 0100
             if (!"0100".equals(isoMsg.getMTI())) {
                 logger.debug("MTI ignorée : {}", isoMsg.getMTI());
                 return;
             }
 
-            // 3) Construire l’entité Autorisations pour la REQUÊTE
+            // Construire l’entité Autorisations pour la REQUÊTE
             Autorisations reqAuth = new Autorisations();
             reqAuth.setReference(isoMsg.hasField(37) ? isoMsg.getString(37) : "");
             reqAuth.setType("REQUEST");
             reqAuth.setPan(isoMsg.hasField(2) ? isoMsg.getString(2) : "");
             reqAuth.setCodeTraitement(isoMsg.hasField(3) ? isoMsg.getString(3) : "");
 
-            // Montant champ 4
             if (isoMsg.hasField(4)) {
                 String montantStr = isoMsg.getString(4);
                 try {
@@ -76,7 +73,6 @@ public class TransactionProcessor {
                 reqAuth.setMontant(null);
             }
 
-            // DateHeure champ 7 (MMDDhhmmss → on force l'année à 2025)
             if (isoMsg.hasField(7)) {
                 String dtStr = isoMsg.getString(7);
                 try {
@@ -93,15 +89,11 @@ public class TransactionProcessor {
                 reqAuth.setDateHeure(null);
             }
 
-            // STAN champ 11
             reqAuth.setStan(isoMsg.hasField(11) ? isoMsg.getString(11) : "");
-            // Heure locale / date locale
             reqAuth.setTimeLocal(isoMsg.hasField(12) ? isoMsg.getString(12) : "");
             reqAuth.setDateLocal(isoMsg.hasField(13) ? isoMsg.getString(13) : "");
-            // Expiration champ 14
             reqAuth.setExpiration(isoMsg.hasField(14) ? isoMsg.getString(14) : "");
 
-            // DateCapture champ 17 (MMDD → LocalDate de l'année courante)
             if (isoMsg.hasField(17)) {
                 String cap = isoMsg.getString(17);
                 try {
@@ -116,7 +108,6 @@ public class TransactionProcessor {
                 reqAuth.setDateCapture(null);
             }
 
-            // Autres champs (MCC, POS, NII, etc.)
             reqAuth.setMcc(isoMsg.hasField(18) ? isoMsg.getString(18) : "");
             reqAuth.setPoseEntryMode(isoMsg.hasField(22) ? isoMsg.getString(22) : "");
             reqAuth.setNii(isoMsg.hasField(24) ? isoMsg.getString(24) : "");
@@ -135,21 +126,16 @@ public class TransactionProcessor {
             reqAuth.setPosDataCode(isoMsg.hasField(123) ? isoMsg.getString(123) : "");
             reqAuth.setPrivateField(isoMsg.hasField(126) ? isoMsg.getString(126) : "");
             reqAuth.setSource("FE1");
-            // A ce stade, pas de responseCode sur la requête
             reqAuth.setResponseCode(null);
 
-            // 4) On sauvegarde la REQUÊTE en base (pour historique)
             autorisationsService.saveAutorisations(reqAuth);
             logger.debug("Requête sauvegardée : REF={}, PAN={}", reqAuth.getReference(), reqAuth.getPan());
 
-            // 5) VALIDATION MÉTIER
             List<String> erreurs = AutorisationValidator.validate(reqAuth);
             if (!erreurs.isEmpty()) {
-                // S’il y a au moins une erreur, on persiste la RESPONSE (code 05) ET on envoie le 0110
                 String detail = String.join("; ", erreurs);
                 logger.warn("Validation échouée pour REF={}. Détail : {}", reqAuth.getReference(), detail);
 
-                // 5a) Construire et sauvegarder la ligne RESPONSE en base (refus)
                 Autorisations respRefus = new Autorisations();
                 respRefus.setReference(reqAuth.getReference());
                 respRefus.setType("RESPONSE");
@@ -187,16 +173,13 @@ public class TransactionProcessor {
                 respRefus.setResponseCode("05");      // code « refus »
                 autorisationsService.saveAutorisations(respRefus);
 
-                // 5b) Envoi du 0110 avec code 05 et champ 44 contenant les messages d’erreur
                 messageHandler.sendAuthResponse(isoMsg, clientSocket, "05", detail);
                 return; // on interrompt le traitement après avoir persisté la réponse refusée
             }
 
-            // 6) Si pas d’erreur, on accepte : on envoie 00 dans le 0110
             messageHandler.sendAuthResponse(isoMsg, clientSocket, "00", null);
             logger.info("Réponse ISO (0110, 00) envoyée pour REF={}", reqAuth.getReference());
 
-            // 7) On persiste la ligne RESPONSE en mode APPROBATION
             Autorisations respOk = new Autorisations();
             respOk.setReference(reqAuth.getReference());
             respOk.setType("RESPONSE");
