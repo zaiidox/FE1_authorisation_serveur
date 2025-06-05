@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <!-- Appender fichier : trace FE1 -->
+    <appender name="FE1" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/fe1-trace.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>logs/fe1-trace.%d{yyyy-MM-dd}.log.gz</fileNamePattern>
+            <maxHistory>7</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{ISO8601} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Appender console : uniquement pour logs généraux INFO+ -->
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern> %msg%n</pattern>
+        </encoder>
+    </appender>
+
+
+    <!-- Logger métier (businessLogic) : seulement dans le fichier, pas de console -->
+    <logger name="org.example.businessLogic" level="TRACE" additivity="false">
+        <appender-ref ref="FE1"/>
+    </logger>
+
+    <!-- ✅ Logger IsoMessagePrinter : ajoute aussi au fichier FE1 -->
+    <logger name="org.example.util.IsoMessagePrinter" level="TRACE" additivity="false">
+        <appender-ref ref="FE1"/>
+        <appender-ref ref="STDOUT"/>
+    </logger>
+
+    <!-- Root logger : uniquement STDOUT, niveau INFO+ -->
+    <root level="INFO">
+        <appender-ref ref="STDOUT"/>
+    </root>
+
+</configuration>
